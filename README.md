@@ -194,7 +194,7 @@ SELECT * FROM [DangKyTour];
 </p>
 
 ---
-# Phần 2: Xây dựng Function
+## Phần 2: Xây dựng Function
 
 **1**. Các loại Built-in Function trong SQL Server
 
@@ -352,7 +352,7 @@ Hàm: fn_ThongKeTrangThaiTour (Thống kê trạng thái tour).
 </p>
 
 ---
-# Phần 3: Xây dựng Store Procedure
+## Phần 3: Xây dựng Store Procedure
 
 **1**. Tìm hiểu về System Stored Procedure (SP có sẵn)
 
@@ -515,7 +515,8 @@ Hàm: sp_BaoCaoKhachDoanVIP
 <i>Hình 10: Danh sách khách đoàn VIP </i></p>
 
 
-# Phần 4: Trigger và Xử lý logic nghiệp vụ
+---
+## Phần 4: Trigger và Xử lý logic nghiệp vụ
 
 **1**. Trigger tự động hóa nghiệp vụ thực tế
 
@@ -621,8 +622,8 @@ Giải pháp: Để tránh tình trạng này:
 - Sử dụng lệnh IF NOT UPDATE(Tên_Cột) để chặn đứng vòng lặp.
 
 - Chỉ nên dùng Trigger cho các tác vụ ghi Log hoặc kiểm tra ràng buộc đơn giản.
-
-# Phần 5: Cursor và Duyệt dữ liệu
+---
+## Phần 5: Cursor và Duyệt dữ liệu
 1
 **1**. Sử dụng Cursor để duyệt danh sách và xử lý bản ghi
 
@@ -761,3 +762,4 @@ Dựa trên kết quả thực hành và quan sát thực tế về tốc độ 
 - Sử dụng Cursor: Chủ yếu dùng trong công tác Quản trị hệ thống (DBA) như: Duyệt danh sách bảng để bảo trì, sao lưu dữ liệu động, hoặc xử lý những logic nghiệp vụ quá rắc rối mà SQL thuần không thể diễn đạt được.
 
 - SQL Thuần (Set-based): Là "xương sống" của 99% các bài toán ứng dụng phần mềm. Mọi thao tác từ tính tiền tour, lọc danh sách khách đoàn đến thống kê doanh thu đều phải dùng cách này để đảm bảo hệ thống vận hành mượt mà.
+---
