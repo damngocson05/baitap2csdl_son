@@ -254,6 +254,7 @@ FROM [DangKyTour];
 
 
 Luồng xử lý dữ liệu:
+
 Hàm: fn_TinhTongTienDangKy (Tính tổng tiền cho một mã đăng ký).
 
 - Bước 1 - Tiếp nhận Input: Hàm nhận một tham số duy nhất là biến @MaDangKy từ câu lệnh gọi hàm.
@@ -336,6 +337,7 @@ GO
 SELECT * FROM dbo.[fn_ThongKeTrangThaiTour]();
 ```
 Luồng xử lý dữ liệu:
+
 Hàm: fn_ThongKeTrangThaiTour (Thống kê trạng thái tour).
 
 - Bước 1 - Khởi tạo biến bảng (Table Variable): Hệ thống cấp phát một vùng nhớ tạm thời để tạo cấu trúc bảng @ThongKeTable theo định nghĩa của người dùng.
@@ -359,15 +361,403 @@ Trong SQL Server, các System SP là các thủ tục được hệ thống xây
 Một số System SP đặc sắc:
 
 - sp_help: Dùng để xem thông tin chi tiết về một đối tượng (bảng, view, index...). Nó trả về kiểu dữ liệu của các cột, khóa chính, khóa ngoại.
-  Cách dùng: EXEC sp_help 'Tour';
+  - Cách dùng: EXEC sp_help 'Tour';
 
 - sp_helpdb: Cung cấp thông tin về dung lượng, đường dẫn tệp tin và trạng thái của các cơ sở dữ liệu trên Server.
-  Cách dùng: EXEC sp_helpdb 'QuanLyTourDuLich_K235480206061';
+  - Cách dùng: EXEC sp_helpdb 'QuanLyTourDuLich_K235480206061';
 
 
 - sp_columns: Trả về danh sách chi tiết tất cả các cột trong một bảng nhất định.
-  Cách dùng: EXEC sp_columns 'DangKyTour';
+  - Cách dùng: EXEC sp_columns 'DangKyTour';
 
 
 - sp_rename: Dùng để đổi tên một đối tượng (như bảng hoặc cột) mà không cần phải xóa đi tạo lại.
-  Cách dùng: EXEC sp_rename 'OldName', 'NewName';
+  - Cách dùng: EXEC sp_rename 'OldName', 'NewName';
+
+
+**2**. Thực hành xây dựng Stored Procedure
+SP Thực hiện INSERT có kiểm tra điều kiện logic
+
+Yêu cầu: Thêm một bản đăng ký tour mới. Phải kiểm tra: số người đi không được vượt quá 40 (giới hạn của một xe khách) và mã Tour phải tồn tại.
+```
+CREATE PROCEDURE [sp_InsertDangKyTour]
+    @TenKhach NVARCHAR(100),
+    @MaT VARCHAR(10),
+    @SoNguoi INT
+AS
+BEGIN
+    -- 1. Kiểm tra mã Tour có tồn tại không
+    IF NOT EXISTS (SELECT 1 FROM [Tour] WHERE [MaTour] = @MaT)
+    BEGIN
+        PRINT N'Lỗi: Mã Tour không tồn tại trên hệ thống.';
+        RETURN;
+    END
+
+    -- 2. Kiểm tra số lượng người (Giới hạn xe 40 chỗ)
+    IF @SoNguoi > 40 OR @SoNguoi <= 0
+    BEGIN
+        PRINT N'Lỗi: Số người đi không hợp lệ (Phải từ 1 đến 40).';
+        RETURN;
+    END
+
+    -- 3. Thực hiện Insert nếu thỏa mãn điều kiện
+    INSERT INTO [DangKyTour] (HoTenKhach, MaTour, NgayDangKy, SoNguoiDi)
+    VALUES (@TenKhach, @MaT, GETDATE(), @SoNguoi);
+    
+    PRINT N'Đăng ký tour thành công cho khách: ' + @TenKhach;
+END;
+GO
+
+-- KHAI THÁC:
+EXEC [sp_InsertDangKyTour] N'Phạm Văn Bình', 'T001', 5;
+```
+Luồng xử lý dữ liệu:
+
+Hàm: sp_InsertDangKyTour
+
+- Bước 1 - Tiếp nhận Tham số: Server nhận các giá trị đầu vào (Tên khách, Mã tour, Số người) từ ứng dụng hoặc người dùng.
+
+- Bước 2 - Kiểm tra tồn tại (Existence Check): Server truy cập bảng Tour để xác minh mã tour truyền vào có tồn tại hay không. Nếu không, luồng xử lý bị ngắt và trả về thông báo lỗi.
+
+- Bước 3 - Kiểm tra ràng buộc nghiệp vụ (Business Rule Check): Hệ thống so sánh số lượng người đăng ký với giới hạn xe (40 chỗ). Nếu vi phạm, luồng xử lý dừng lại ngay lập tức (lệnh RETURN).
+
+- Bước 4 - Ghi dữ liệu (Commit): Khi các điều kiện đều thỏa mãn, lệnh INSERT được thực thi để đưa dữ liệu vào bảng vật lý DangKyTour.
+
+- Bước 5 - Phản hồi: Server gửi thông báo "Thành công" về phía Client.
+
+
+<P> <img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/fc66734d-bc6c-4416-a057-6a48e0b3934e" />
+<i>Hình 8: Đăng ký tour thành công cho khách</i></P>
+
+
+**2**. Stored Procedure trả về giá trị qua tham số OUTPUT
+
+Yêu cầu: Xây dựng thủ tục tính toán tổng doanh thu của một "Loại Tour" nhất định (ví dụ: Tour Biển). Kết quả không hiển thị ra màn hình ngay mà phải được gán vào một biến đầu ra (Output) để các module khác trong phần mềm có thể tiếp tục xử lý hoặc tính thuế.
+
+```
+ALTER PROCEDURE [sp_GetDoanhThuTheoLoai]
+    @MaLoai INT,
+    @TongTien MONEY OUTPUT
+AS
+BEGIN
+    SELECT @TongTien = SUM(D.SoNguoiDi * T.GiaTour)
+    FROM [DangKyTour] D
+    JOIN [Tour] T ON D.MaTour = T.MaTour
+    WHERE T.MaLoai = @MaLoai;
+
+    SET @TongTien = ISNULL(@TongTien, 0);
+END;
+GO
+
+-- KHAI THÁC
+DECLARE @BienHungResult MONEY;
+DECLARE @MaLoaiCoThat INT;
+SELECT TOP 1 @MaLoaiCoThat = T.MaLoai 
+FROM DangKyTour D JOIN Tour T ON D.MaTour = T.MaTour;
+EXEC [sp_GetDoanhThuTheoLoai] @MaLoaiCoThat, @BienHungResult OUTPUT;
+
+SELECT 
+    N'Mã loại đang kiểm tra: ' + CAST(@MaLoaiCoThat AS NVARCHAR(10)) AS [ThongTin],
+    FORMAT(@BienHungResult, 'N0') + ' VND' AS [TongDoanhThuThucTe];
+
+```
+Luồng xử lý dữ liệu:
+
+Hàm: sp_GetDoanhThuTheoLoai
+
+- Bước 1 - Khởi tạo vùng nhớ: Phía người gọi khai báo một biến cục bộ để chuẩn bị nhận giá trị trả về từ Server.
+- Bước 2 - Liên kết dữ liệu (JOIN): Server thực hiện kết nối bảng DangKyTour và Tour thông qua mã tour chung để lấy được bộ dữ liệu gồm: Số người đi và Đơn giá tour.
+- Bước 3 - Tổng hợp (Aggregation): Sử dụng hàm SUM để tính tổng kết quả của biểu thức (Số người $\times$ Đơn giá) cho toàn bộ danh sách đã lọc theo @MaLoai.
+- Bước 4 - Ghi đè vào biến Output: Giá trị sau cùng được gán trực tiếp vào biến tham số có từ khóa OUTPUT.
+- Bước 5 - Trả vùng nhớ: Khi thủ tục kết thúc, giá trị này được "bắn" ngược lại về biến đã khai báo ở Bước 1 của Client.
+
+<p><img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/92aca1e4-ea01-400f-8555-6156e92935f1" />
+ <i>Hình 9: Xem tổng doanh thu thực tế </i></p>
+
+**3**. Stored Procedure trả về tập kết quả (Result Set) từ lệnh JOIN
+
+Yêu cầu: Xây dựng một thủ tục báo cáo tổng hợp danh sách khách hàng thuộc nhóm "Khách đoàn VIP" (những khách đăng ký từ 5 người trở lên). Báo cáo cần trích xuất dữ liệu từ 3 bảng: DangKyTour, Tour, và LoaiTour để hiển thị đầy đủ thông tin về hành trình và loại hình du lịch mà khách đã chọn.
+```
+ALTER PROCEDURE [sp_BaoCaoKhachDoanVIP] 
+AS
+BEGIN
+   
+    SELECT 
+        D.HoTenKhach AS [Tên Khách Hàng],
+        T.TenTour AS [Tên Hành Trình],
+        L.TenLoai AS [Loại Hình Tour],
+        D.SoNguoiDi AS [Số Lượng Khách],
+        FORMAT(D.SoNguoiDi * T.GiaTour, 'N0') + ' VND' AS [Tổng Giá Trị]
+    FROM [DangKyTour] D
+    INNER JOIN [Tour] T ON D.MaTour = T.MaTour
+    INNER JOIN [LoaiTour] L ON T.MaLoai = L.MaLoai
+    WHERE D.SoNguoiDi >= 5  
+    ORDER BY D.SoNguoiDi DESC; 
+END;
+GO
+EXEC [sp_BaoCaoKhachDoanVIP];
+```
+Luồng xử lý dữ liệu:
+
+Hàm: sp_BaoCaoKhachDoanVIP
+- Bước 1 - Phối hợp dữ liệu (Multi-Join Operation): Server thực hiện lệnh kết nối đồng thời 3 bảng gốc: DangKyTour (Giao dịch), Tour (Hành trình) và LoaiTour (Danh mục) để tập hợp đầy đủ thông tin định danh.
+
+- Bước 2 - Lọc dữ liệu theo tiêu chuẩn (Filtering): Hệ thống áp dụng mệnh đề WHERE để lọc ra các bản ghi có SoNguoiDi >= 5. Các dữ liệu không thỏa mãn sẽ bị loại bỏ khỏi bộ nhớ đệm.
+
+- Bước 3 - Biến đổi hiển thị (Data Transformation): Thực hiện phép nhân đơn giá trực tiếp trên từng dòng và sử dụng hàm FORMAT() để chuyển đổi số tiền sang dạng chuỗi có ký tự VND và dấu phân cách hàng nghìn.
+
+- Bước 4 - Sắp xếp thứ tự (Sorting): Server sắp xếp lại tập dữ liệu theo thứ tự giảm dần của số lượng khách để làm nổi bật các khách hàng quan trọng nhất (VIP).
+
+- Bước 5 - Xuất luồng kết quả (Output Stream): Trả về một tập kết quả (Result Set) dạng bảng hiển thị trực tiếp cho người dùng cuối.
+
+
+<p> <img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/02788970-5107-4d58-b0e4-194ea945a804" />
+<i>Hình 10: Danh sách khách đoàn VIP </i></p>
+
+
+# Phần 4: Trigger và Xử lý logic nghiệp vụ
+
+**1**. Trigger tự động hóa nghiệp vụ thực tế
+
+Ý tưởng (Scenario): "Tích lũy tổng chi tiêu của khách hàng và tự động phân loại Khách VIP khi đạt doanh thu lớn."
+
+Tình huống thực tế:
+- Để quản lý doanh thu từ từng khách hàng, mỗi khi có một lượt đăng ký tour mới, hệ thống cần tự động cộng dồn số tiền đó vào hồ sơ của khách. Nếu tổng số tiền khách đã chi trả đạt trên 50.000.000 VND, hệ thống sẽ tự động nâng cấp khách đó lên hạng 'VIP' để hưởng chiết khấu cho các lần sau.
+
+Logic giải quyết:
+
+- Bước 1: Tạo thêm hai cột TongChiTieu (mặc định là 0) và HangThanhVien (mặc định là 'Thường') vào bảng DangKyTour (hoặc bảng khách hàng nếu có). Để đơn giản và khớp code, ta sẽ cập nhật trực tiếp dựa trên HoTenKhach.
+- Bước 2: Viết Trigger gắn trên bảng DangKyTour (Bảng A) cho sự kiện INSERT.
+- Bước 3: Khi chèn một bản ghi mới, Trigger sẽ lấy (Số người $\times$ Giá tour) cộng vào TongChiTieu. Nếu TongChiTieu > 50.000.000, Trigger tự động UPDATE cột HangThanhVien thành 'VIP'.
+
+```
+ALTER TABLE [DangKyTour] ADD [TongChiTieuKhach] MONEY DEFAULT 0;
+ALTER TABLE [DangKyTour] ADD [HangThanhVien] NVARCHAR(50) DEFAULT N'Thường';
+GO
+
+-- =============================================
+-- Author:      Đàm Ngọc Sơn
+-- Create date: 2026-04-24
+-- Description: Tích lũy doanh thu và tự động nâng cấp VIP cho khách hàng
+-- =============================================
+CREATE TRIGGER [trg_TichLuyDoanhThu]
+ON [DangKyTour]
+AFTER INSERT
+AS
+BEGIN
+    DECLARE @TenK NVARCHAR(100);
+    DECLARE @SoTienVuaGiaoDich MONEY;
+
+ 
+    SELECT @TenK = i.HoTenKhach, @SoTienVuaGiaoDich = (i.SoNguoiDi * T.GiaTour)
+    FROM inserted i
+    JOIN [Tour] T ON i.MaTour = T.MaTour;
+
+    
+    UPDATE [DangKyTour]
+    SET [TongChiTieuKhach] = [TongChiTieuKhach] + @SoTienVuaGiaoDich
+    WHERE [HoTenKhach] = @TenK;
+
+    
+    UPDATE [DangKyTour]
+    SET [HangThanhVien] = N'VIP'
+    WHERE [HoTenKhach] = @TenK AND [TongChiTieuKhach] >= 50000000;
+
+    PRINT N'HỆ THỐNG: Đã cập nhật tích lũy và kiểm tra hạng VIP cho khách: ' + @TenK;
+END;
+GO
+
+
+INSERT INTO [DangKyTour] (HoTenKhach, MaTour, NgayDangKy, SoNguoiDi)
+VALUES (N'Đàm Ngọc Sơn', 'T001', GETDATE(), 10);
+```
+- Bước 1 - Tiếp nhận sự kiện: Khi có lệnh INSERT vào bảng DangKyTour, Server kích hoạt Trigger và nạp dữ liệu vào bảng tạm inserted.
+
+- Bước 2 - Tính toán tài chính: Trigger thực hiện phép JOIN giữa bảng tạm và bảng Tour để xác định tổng giá trị của giao dịch vừa phát sinh.
+
+- Bước 3 - Cập nhật cộng dồn: Hệ thống thực hiện lệnh UPDATE để tích lũy số tiền mới vào cột TongChiTieuKhach. Đây là quá trình tự động cập nhật dữ liệu nội bảng dựa trên danh tính khách hàng.
+
+- Bước 4 - Phân loại hạng mục: Server kiểm tra điều kiện ngân sách. Nếu đạt ngưỡng 50 triệu, lệnh UPDATE thứ hai sẽ thay đổi nhãn HangThanhVien từ 'Thường' sang 'VIP'.
+
+- Bước 5 - Kết thúc và thông báo: Server đóng giao dịch và in thông báo xác nhận việc cập nhật hạng thành viên đã hoàn tất.
+
+
+<P> <img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/e2a5bc61-6060-47d1-ac61-c1c97eca40a6" />
+<I>Hình 11: Kiểm tra và cập nhật thông tin VIP cho khách hàng</I></P>
+
+
+**2**. Thử nghiệm Trigger vòng lặp (Recursive Trigger)
+
+Ý tưởng: Thiết lập hai Trigger cập nhật chéo giữa bảng DangKyTour (Bảng A) và bảng Tour (Bảng B) để tạo ra một vòng lặp vô tận.
+
+Thực hiện thiết lập:
+
+- Trigger 1 (Trên bảng DangKyTour - A): Khi có một lượt đăng ký mới, tự động cập nhật lại tên Tour ở bảng B.
+
+- Trigger 2 (Trên bảng Tour - B): Khi tên Tour ở bảng B bị cập nhật, tự động cập nhật lại số lượng người đi ở bảng A.
+
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/81c02403-d9a8-4579-aa69-329cb8398a60" />
+
+
+Nguyên nhân: Đây là hiện tượng Đệ quy gián tiếp (Indirect Recursion).
+
+Lệnh Update ở bảng A kích hoạt trg_A_to_B.
+
+- trg_A_to_B thực hiện Update bảng B, làm kích hoạt trg_B_to_A.
+
+- trg_B_to_A lại quay lại Update bảng A, làm trg_A_to_B chạy tiếp...
+
+Cơ chế bảo vệ: SQL Server không để vòng lặp này chạy mãi mãi vì sẽ làm treo Server (cạn kiệt CPU và RAM). Hệ thống có một bộ đếm tầng lặp, mặc định giới hạn là 32 cấp. Khi vòng lặp đạt đến lần thứ 32, hệ thống tự động ngắt kết nối và báo lỗi để bảo vệ cơ sở dữ liệu.
+
+
+Về mặt kỹ thuật: Việc thiết kế Trigger cập nhật chéo lẫn nhau giữa các bảng liên quan là một sai lầm nghiêm trọng trong kiến trúc Database.
+
+Về mặt quản trị: Trigger là công cụ mạnh mẽ nhưng là "con dao hai lưỡi". Nếu không kiểm soát được các tầng tác động (Nesting level), nó sẽ gây ra các lỗi hệ thống khó kiểm soát và làm giảm hiệu năng cực lớn.
+
+Giải pháp: Để tránh tình trạng này:
+
+- Hạn chế dùng Trigger cập nhật chéo.
+
+- Sử dụng lệnh IF NOT UPDATE(Tên_Cột) để chặn đứng vòng lặp.
+
+- Chỉ nên dùng Trigger cho các tác vụ ghi Log hoặc kiểm tra ràng buộc đơn giản.
+
+# Phần 5: Cursor và Duyệt dữ liệu
+1
+**1**. Sử dụng Cursor để duyệt danh sách và xử lý bản ghi
+
+Ý tưởng (Scenario): "Tự động gửi thông báo chi tiết và tính lại khuyến mãi cho từng khách đăng ký Tour."
+
+Hệ thống sẽ duyệt qua danh sách đăng ký hôm nay. Với mỗi bản ghi, nếu số người đi trên 5 người, hệ thống sẽ in ra một thông báo đặc biệt và tặng thêm 10% giảm giá cho bản ghi đó.
+
+```
+-- =============================================
+-- Author:      Đàm Ngọc Sơn
+-- Description: Duyệt từng dòng đăng ký để xử lý khuyến mãi riêng biệt
+-- =============================================
+DECLARE @MaDK INT, @TenK NVARCHAR(100), @SoNguoi INT;
+
+
+DECLARE cur_KhuyenMai CURSOR FOR 
+SELECT MaDangKy, HoTenKhach, SoNguoiDi FROM [DangKyTour];
+
+
+OPEN cur_KhuyenMai;
+
+
+FETCH NEXT FROM cur_KhuyenMai INTO @MaDK, @TenK, @SoNguoi;
+
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    IF @SoNguoi >= 5
+    BEGIN
+        PRINT N'Xử lý khách đoàn: ' + @TenK + N' - Mã DK: ' + CAST(@MaDK AS VARCHAR) + N' (Tặng Voucher 10%)';
+       
+    END
+    ELSE
+    BEGIN
+        PRINT N'Xử lý khách lẻ: ' + @TenK;
+    END
+
+
+    FETCH NEXT FROM cur_KhuyenMai INTO @MaDK, @TenK, @SoNguoi;
+END;
+
+
+CLOSE cur_KhuyenMai;
+DEALLOCATE cur_KhuyenMai;
+```
+
+
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/95e9f18b-712d-4845-8336-271e2f9322bb" />
+
+**2**. Giải quyết bài toán không dùng Cursor (Set-based)
+Bài toán trên hoàn toàn có thể giải quyết nhanh bằng lệnh UPDATE hoặc SELECT kết hợp cấu trúc CASE WHEN.
+Mã nguồn tối ưu SQL:
+```
+SELECT 
+    HoTenKhach,
+    CASE 
+        WHEN SoNguoiDi >= 5 THEN N'Tặng Voucher 10%'
+        ELSE N'Không khuyến mãi'
+    END AS [GhiChuKhuyenMai]
+FROM [DangKyTour];
+```
+
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/cb507cac-08b0-47fc-a880-ef29033f3516" />
+
+So sánh tốc độ và nhận xét:
+- Tốc độ: Khi chạy với dữ liệu lớn ), cách không dùng Cursor (Set-based) nhanh hơn gấp nhiều lần. Cursor tốn tài nguyên vì phải mở/đóng kết nối dữ liệu cho từng dòng một.
+
+
+Bài toán đặc thù: Thực thi SQL động cho công tác quản trị
+
+
+Ý tưởng bài toán: "Tự động sao lưu (Backup) tất cả các bảng trong Database ra các file vật lý riêng biệt hoặc Rebuild lại toàn bộ Index của các bảng để tối ưu tốc độ."
+
+- Các lệnh SQL như SELECT, UPDATE, DELETE làm việc trên tập dữ liệu (rows).
+
+- Các lệnh quản trị như ALTER INDEX... REBUILD hoặc DBCC CHECKDB chỉ nhận tham số là tên một đối tượng duy nhất. SQL không cho phép viết: ALTER INDEX ALL ON (SELECT Name FROM sys.tables) REBUILD. Điều này là sai cú pháp.
+
+Cách giải quyết bằng Cursor (Duy nhất khả thi):
+- Cursor sẽ đóng vai trò là "người điều phối". Nó đi nhặt từng cái tên bảng trong hệ thống, sau đó lắp ghép thành một câu lệnh SQL hoàn chỉnh và ra lệnh thực thi câu lệnh đó.
+
+```
+-- =============================================
+-- Author:      Đàm Ngọc Sơn
+-- Description: Cursor duyệt danh sách bảng để bảo trì Index - SQL thuần không làm được trực tiếp
+-- =============================================
+DECLARE @TableName NVARCHAR(256);
+DECLARE @SqlCmd NVARCHAR(MAX);
+
+DECLARE cur_Maintenance CURSOR FOR 
+SELECT name FROM sys.tables WHERE type = 'U';
+
+OPEN cur_Maintenance;
+FETCH NEXT FROM cur_Maintenance INTO @TableName;
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+ 
+    SET @SqlCmd = 'ALTER INDEX ALL ON [' + @TableName + '] REBUILD;';
+    
+    PRINT N'Đang thực hiện bảo trì bảng: ' + @TableName;
+
+    EXEC sp_executesql @SqlCmd;
+
+    FETCH NEXT FROM cur_Maintenance INTO @TableName;
+END;
+
+CLOSE cur_Maintenance;
+DEALLOCATE cur_Maintenance;
+```
+
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/f3ee0830-062b-4c52-a79c-8c6f0e659523" />
+
+Nhận xét và Tổng kết:
+Dựa trên kết quả thực hành và quan sát thực tế về tốc độ cũng như cách vận hành, em rút ra các điểm khác biệt cốt lõi giữa việc sử dụng Cursor và SQL thuần (Set-based) như sau:
+
+1. Về phương thức tư duy và tiếp cận
+   
+- Sử dụng Cursor: Mang tư duy lập trình tuần tự (Procedural), tương tự như các ngôn ngữ C++, Python hay Java. Người lập trình phải ra lệnh cho hệ thống đi từng bước: "Mở bảng ra -> Lấy dòng 1 -> Làm việc A -> Lấy dòng tiếp theo".
+
+- SQL Thuần (Set-based): Mang tư duy khai báo (Declarative). Ta chỉ cần mô tả cho SQL Server biết "Tôi muốn kết quả như thế này", còn việc lấy dữ liệu ở đâu, duyệt dòng nào trước dòng nào sau sẽ do hệ thống tự tính toán.
+
+2. Về hiệu suất và tốc độ xử lý
+   
+- Sử dụng Cursor: Tốc độ Rất Chậm. Hệ thống phải lặp đi lặp lại các thao tác quản lý bộ nhớ như OPEN, FETCH, và CLOSE cho từng dòng dữ liệu. Với hàng vạn bản ghi, Cursor sẽ gây ra hiện tượng nghẽn cổ chai.
+
+- SQL Thuần (Set-based): Tốc độ Rất Nhanh. Nhờ vào bộ tối ưu hóa truy vấn (Query Optimizer), SQL Server sẽ xử lý toàn bộ tập dữ liệu cùng lúc trong bộ nhớ, giúp giảm thiểu tối đa thời gian truy xuất.
+
+3. Về khả năng thực thi và tính linh hoạt
+   
+- Sử dụng Cursor: Cực kỳ linh hoạt trong các tác vụ động. Nó có thể thực thi các lệnh hệ thống khác nhau, gọi các Stored Procedure khác nhau tùy thuộc vào giá trị của từng dòng dữ liệu mà nó duyệt qua.
+
+- SQL Thuần (Set-based): Có hạn chế nhất định. Nó cực mạnh khi tính toán, biến đổi hoặc lọc dữ liệu trên các bảng có sẵn, nhưng rất khó (hoặc không thể) thực hiện các lệnh quản trị hệ thống phức tạp một cách tự động trên nhiều đối tượng khác nhau.
+
+4. Về tính ứng dụng thực tế
+   
+- Sử dụng Cursor: Chủ yếu dùng trong công tác Quản trị hệ thống (DBA) như: Duyệt danh sách bảng để bảo trì, sao lưu dữ liệu động, hoặc xử lý những logic nghiệp vụ quá rắc rối mà SQL thuần không thể diễn đạt được.
+
+- SQL Thuần (Set-based): Là "xương sống" của 99% các bài toán ứng dụng phần mềm. Mọi thao tác từ tính tiền tour, lọc danh sách khách đoàn đến thống kê doanh thu đều phải dùng cách này để đảm bảo hệ thống vận hành mượt mà.
