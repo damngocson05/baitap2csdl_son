@@ -676,6 +676,7 @@ DEALLOCATE cur_KhuyenMai;
 <i>Hình 13: Chạy lệnh thành công và in ra một thông báo đặc biệt và tặng thêm 10% giảm giá</i>
 </p>
 **2**. Giải quyết bài toán không dùng Cursor (Set-based)
+
 Bài toán trên hoàn toàn có thể giải quyết nhanh bằng lệnh UPDATE hoặc SELECT kết hợp cấu trúc CASE WHEN.
 Mã nguồn tối ưu SQL:
 ```
@@ -691,6 +692,7 @@ FROM [DangKyTour];
 <p><img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/cb507cac-08b0-47fc-a880-ef29033f3516" />
 <i>Hình 14: Chạy mã nguồn tối ưu</i>
 </p>
+
 So sánh tốc độ và nhận xét:
 - Tốc độ: Khi chạy với dữ liệu lớn ), cách không dùng Cursor (Set-based) nhanh hơn gấp nhiều lần. Cursor tốn tài nguyên vì phải mở/đóng kết nối dữ liệu cho từng dòng một.
 
