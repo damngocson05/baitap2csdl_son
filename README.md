@@ -675,6 +675,7 @@ DEALLOCATE cur_KhuyenMai;
 <p><img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/95e9f18b-712d-4845-8336-271e2f9322bb" />
 <i>Hình 13: Chạy lệnh thành công và in ra một thông báo đặc biệt và tặng thêm 10% giảm giá</i>
 </p>
+
 **2**. Giải quyết bài toán không dùng Cursor (Set-based)
 
 Bài toán trên hoàn toàn có thể giải quyết nhanh bằng lệnh UPDATE hoặc SELECT kết hợp cấu trúc CASE WHEN.
