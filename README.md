@@ -598,8 +598,9 @@ Thực hiện thiết lập:
 
 - Trigger 2 (Trên bảng Tour - B): Khi tên Tour ở bảng B bị cập nhật, tự động cập nhật lại số lượng người đi ở bảng A.
 
-<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/81c02403-d9a8-4579-aa69-329cb8398a60" />
-
+<P><img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/81c02403-d9a8-4579-aa69-329cb8398a60" />
+<I>Hình 12: Sau khi thiết lập hai Trigger cập nhật chéo giữa bảng DangKyTour (Bảng A) và bảng Tour (Bảng B)</I>
+</P>
 
 Nguyên nhân: Đây là hiện tượng Đệ quy gián tiếp (Indirect Recursion).
 
@@ -671,8 +672,9 @@ DEALLOCATE cur_KhuyenMai;
 ```
 
 
-<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/95e9f18b-712d-4845-8336-271e2f9322bb" />
-
+<p><img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/95e9f18b-712d-4845-8336-271e2f9322bb" />
+<i>Hình 13: Chạy lệnh thành công và in ra một thông báo đặc biệt và tặng thêm 10% giảm giá</i>
+</p>
 **2**. Giải quyết bài toán không dùng Cursor (Set-based)
 Bài toán trên hoàn toàn có thể giải quyết nhanh bằng lệnh UPDATE hoặc SELECT kết hợp cấu trúc CASE WHEN.
 Mã nguồn tối ưu SQL:
@@ -686,8 +688,9 @@ SELECT
 FROM [DangKyTour];
 ```
 
-<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/cb507cac-08b0-47fc-a880-ef29033f3516" />
-
+<p><img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/cb507cac-08b0-47fc-a880-ef29033f3516" />
+<i>Hình 14: Chạy mã nguồn tối ưu</i>
+</p>
 So sánh tốc độ và nhận xét:
 - Tốc độ: Khi chạy với dữ liệu lớn ), cách không dùng Cursor (Set-based) nhanh hơn gấp nhiều lần. Cursor tốn tài nguyên vì phải mở/đóng kết nối dữ liệu cho từng dòng một.
 
@@ -734,8 +737,9 @@ CLOSE cur_Maintenance;
 DEALLOCATE cur_Maintenance;
 ```
 
-<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/f3ee0830-062b-4c52-a79c-8c6f0e659523" />
-
+<p><img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/f3ee0830-062b-4c52-a79c-8c6f0e659523" />
+<i>Hình 15: Thực hiện lệnh thành công , hệ thống bảo trì các bảng</i>
+</p>
 Nhận xét và Tổng kết:
 Dựa trên kết quả thực hành và quan sát thực tế về tốc độ cũng như cách vận hành, em rút ra các điểm khác biệt cốt lõi giữa việc sử dụng Cursor và SQL thuần (Set-based) như sau:
 
